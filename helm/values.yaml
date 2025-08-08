@@ -1,0 +1,20 @@
+replicaCount: 1
+
+image:
+  repository: "https://github.com/rgordon40/Test-App/hello-helm-app"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  host: ""
+  annotations: {}
+
+nginx:
+  service:
+    type: ClusterIP
+  replicaCount: 1
