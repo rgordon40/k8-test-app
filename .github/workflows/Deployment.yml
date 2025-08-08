@@ -1,0 +1,130 @@
+name: Deploy Infrastructure and App to AKS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+env:
+  TF_WORKING_DIR: terraform
+  HELM_CHART_DIR: helm
+  APP_DIR: app
+
+jobs:
+  terraform:
+    name: Terraform Apply (Provision Azure Resources)
+    runs-on: ubuntu-latest
+    outputs:
+      acr_login_server: ${{ steps.tf_outputs.outputs.acr_login_server }}
+      aks_name:         ${{ steps.tf_outputs.outputs.aks_name }}
+      resource_group:   ${{ steps.tf_outputs.outputs.resource_group }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.0
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Initialize Terraform
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: Plan Terraform
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Apply Terraform
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: Read Terraform outputs (ACR, AKS, RG)
+        id: tf_outputs
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          ACR=$(terraform output -raw acr_login_server 2>/dev/null | tr -d '\r' | grep -Eo '^[a-zA-Z0-9.-]+\.azurecr\.io$' | head -n 1)
+          AKS=$(terraform output -raw aks_name 2>/dev/null | tr -d '\r' | grep -Eo '^[a-zA-Z0-9-]+$' | head -n 1)
+          RG=$(terraform output -raw resource_group 2>/dev/null | tr -d '\r' | grep -Eo '^[a-zA-Z0-9_-]+$' | head -n 1)
+
+          echo "DEBUG: ACR = '$ACR'"
+          echo "DEBUG: AKS = '$AKS'"
+          echo "DEBUG: RG  = '$RG'"
+
+          if [ -z "$ACR" ]; then
+            echo "::error::Invalid or missing ACR login server"
+            exit 1
+          fi
+          if [ -z "$AKS" ]; then
+            echo "::error::Invalid or missing AKS name"
+            exit 1
+          fi
+          if [ -z "$RG" ]; then
+            echo "::error::Invalid or missing resource group"
+            exit 1
+          fi
+
+          {
+            echo "acr_login_server=$ACR"
+            echo "aks_name=$AKS"
+            echo "resource_group=$RG"
+          } >> $GITHUB_OUTPUT
+
+
+  build_and_deploy:
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get ACR admin credentials
+        id: acr_creds
+        run: |
+          ACR_LOGIN_SERVER="${{ needs.terraform.outputs.acr_login_server }}"
+          ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
+
+          ACR_USER=$(az acr credential show --name "$ACR_NAME" --query "username" -o tsv)
+          ACR_PASS=$(az acr credential show --name "$ACR_NAME" --query "passwords[0].value" -o tsv)
+
+          echo "ACR_USERNAME=$ACR_USER" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASS" >> $GITHUB_ENV
+
+      - name: Build & push Docker image to ACR
+        env:
+          ACR_LOGIN_SERVER: ${{ needs.terraform.outputs.acr_login_server }}
+          ACR_USERNAME: ${{ env.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ env.ACR_PASSWORD }}
+        run: |
+          IMAGE="$ACR_LOGIN_SERVER/hello-helm-app:latest"
+          echo "Building image $IMAGE"
+          docker build -t "$IMAGE" ./app
+          echo "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" -u "$ACR_USERNAME" --password-stdin
+          docker push "$IMAGE"
+
+      - name: Get AKS credentials
+        run: |
+          AKS_NAME="${{ needs.terraform.outputs.aks_name }}"
+          RG="${{ needs.terraform.outputs.resource_group }}"
+          az aks get-credentials --name "$AKS_NAME" --resource-group "$RG" --overwrite-existing
+
+      - name: Install Helm
+        run: |
+          helm version
+          cd helm
+          helm dependency update
+          helm upgrade --install hello-helm ./ \
+            --set image.repository="${{ needs.terraform.outputs.acr_login_server }}/hello-helm-app" \
+            --set image.tag=latest \
+            --wait
