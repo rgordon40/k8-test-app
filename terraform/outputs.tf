@@ -13,7 +13,5 @@ output "kube_admin_config_raw" {
 }
 
 output "acr_login_server" {
-  description = "The login server of the Azure Container Registry"
-  value       = trimspace(azurerm_container_registry.acr.login_server)
-  sensitive   = false
+  value = azurerm_container_registry.acr.login_server
 }
