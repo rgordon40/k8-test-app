@@ -34,10 +34,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   network_profile {
     network_plugin = "azure"
   }
-
-  lifecycle {
-    ignore_changes = [kube_admin_config_raw]
-  }
 }
 
 resource "azurerm_role_assignment" "acr_pull" {
