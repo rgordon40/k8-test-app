@@ -57,10 +57,13 @@ jobs:
     name: Build & Deploy App
     runs-on: ubuntu-latest
     needs: terraform
+    outputs:
+      aks_name: ${{ steps.get-output.outputs.aks_name }}
+      rg_name: ${{ steps.get-output.outputs.rg_name }}
     env:
       ACR_LOGIN_SERVER: ${{ needs.terraform.outputs.acr_login_server }}
-      AKS_NAME: ${{ needs.terraform.outputs.AKS_NAME }}
-      RG_NAME: ${{ needs.terraform.outputs.RG_NAME }}
+      AKS_NAME: ${{ needs.terraform.outputs.aks_name }}
+      RG_NAME: ${{ needs.terraform.outputs.rg_name }}
     defaults:
       run:
         working-directory: app
@@ -87,10 +90,20 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
       
+      - name: Get Terraform Output
+        id: get-output
+        run: |
+          aks_value=$(terraform output -raw aks_name)
+          echo "AKS_NAME=${aks_name}" >> $GITHUB_OUTPUT
+          echo "AKS_NAME``=${aks_name}" >> $GITHUB_ENV
+          rg_value=$(terraform output -raw rg_name)
+          echo "RG_NAME=${rg_name}" >> $GITHUB_OUTPUT
+          echo "RG_NAME``=${rg_name}" >> $GITHUB_ENV
+      
       - name: Set AKS env variables
         run: |
-          echo "AKS_NAME=${{ needs.terraform.outputs.AKS_NAME }}" >> $GITHUB_ENV
-          echo "RG_NAME=${{ needs.terraform.outputs.RG_NAME }}" >> $GITHUB_ENV
+          echo "AKS_NAME=${{ needs.terraform.outputs.aks_name }}" >> $GITHUB_ENV
+          echo "RG_NAME=${{ needs.terraform.outputs.rg_name }}" >> $GITHUB_ENV
       
       - name: Get AKS Credentials
         run: |
@@ -98,6 +111,7 @@ jobs:
             --resource-group $RG_NAME \
             --name $AKS_NAME \
             --overwrite-existing
+      
       - name: Helm Upgrade/Install
         run: |
           helm upgrade --install myapp ../helm \
