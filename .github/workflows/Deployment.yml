@@ -15,7 +15,7 @@ jobs:
     outputs:
       acr_login_server: ${{ steps.get-output.outputs.acr_login_server }}
       aks_name: ${{ steps.get-output.outputs.aks_name }}
-      rg_name: ${{ steps.get-output.outputs.rg_name }}
+      rg_name: ${{ steps.get-output.outputs.resource_group }}
 
     steps:
       - name: Checkout Repo
@@ -58,7 +58,7 @@ jobs:
 
           ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
           AKS_NAME=$(terraform output -raw aks_name)
-          RG_NAME=$(terraform output -raw rg_name)
+          RG_NAME=$(terraform output -raw resource_group)
 
           if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$AKS_NAME" ] || [ -z "$RG_NAME" ]; then
             echo "ERROR: One or more Terraform outputs are empty."
@@ -81,7 +81,7 @@ jobs:
     env:
       ACR_LOGIN_SERVER: ${{ needs.terraform.outputs.acr_login_server }}
       AKS_NAME: ${{ needs.terraform.outputs.aks_name }}
-      RG_NAME: ${{ needs.terraform.outputs.rg_name }}
+      RG_NAME: ${{ needs.terraform.outputs.resource_group }}
     defaults:
       run:
         working-directory: app
@@ -102,12 +102,20 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
       
+      - name: Get Terraform Output
+        id: get-output
+        run: |
+          set -e
+          echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
+          echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
+          echo "rg_name=$(terraform output -raw resource_group)" >> $GITHUB_OUTPUT
+
+      
       - name: Get AKS Credentials
         run: |
-          echo "Getting AKS credentials for cluster: $AKS_NAME in resource group: $RG_NAME"
           az aks get-credentials \
-            --resource-group "$RG_NAME" \
-            --name "$AKS_NAME" \
+            --resource-group $RG_NAME \
+            --name $AKS_NAME \
             --overwrite-existing
       
       - name: Helm Upgrade/Install
