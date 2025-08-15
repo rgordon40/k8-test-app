@@ -87,12 +87,18 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
+      - name: Get Terraform Output
+        id: get-output
+        run: |
+          acr_value=$(terraform output -raw acr_login_server)
+          echo "acr_login_server=${acr_value}" >> $GITHUB_OUTPUT
+          echo "ACR_LOGIN_SERVER=${acr_value}" >> $GITHUB_ENV
+      
       - name: Set AKS env variables
         run: |
-          echo "AKS_NAME=$(terraform output -raw aks_name)" >> $GITHUB_ENV
-          echo "RG_NAME=$(terraform output -raw rg_name)" >> $GITHUB_ENV
+          echo "AKS_NAME=${{ needs.terraform.outputs.AKS_NAME" }} >> $GITHUB_ENV
+          echo "RG_NAME=${{ needs.terraform.outputs.RG_NAME }}" >> $GITHUB_ENV
 
-      
       - name: Get AKS Credentials
         run: |
           az aks get-credentials \
