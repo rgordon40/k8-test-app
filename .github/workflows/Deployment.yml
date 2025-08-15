@@ -96,7 +96,7 @@ jobs:
       
       - name: Set AKS env variables
         run: |
-          echo "AKS_NAME=${{ needs.terraform.outputs.AKS_NAME" }} >> $GITHUB_ENV
+          echo "AKS_NAME=${{ needs.terraform.outputs.AKS_NAME }}" >> $GITHUB_ENV
           echo "RG_NAME=${{ needs.terraform.outputs.RG_NAME }}" >> $GITHUB_ENV
       
       - name: Get AKS Credentials
