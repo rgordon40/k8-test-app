@@ -15,7 +15,7 @@ jobs:
     outputs:
       acr_login_server: ${{ steps.get-output.outputs.acr_login_server }}
       aks_name: ${{ steps.get-output.outputs.aks_name }}
-      rg_name: ${{ steps.get-output.outputs.resource_group }}
+      resource_group: ${{ steps.get-output.outputs.resource_group }}
 
     steps:
       - name: Checkout Repo
@@ -58,21 +58,21 @@ jobs:
 
           ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
           AKS_NAME=$(terraform output -raw aks_name)
-          RG_NAME=$(terraform output -raw resource_group)
+          RESOURCE_GROUP=$(terraform output -raw resource_group)
 
-          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$AKS_NAME" ] || [ -z "$RG_NAME" ]; then
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$AKS_NAME" ] || [ -z "$RESOURCE_GROUP" ]; then
             echo "ERROR: One or more Terraform outputs are empty."
             exit 1
           fi
 
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "aks_name=$AKS_NAME" >> $GITHUB_OUTPUT
-          echo "rg_name=$RG_NAME" >> $GITHUB_OUTPUT
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
 
           echo "✅ Terraform outputs:"
           echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
           echo "AKS_NAME=$AKS_NAME"
-          echo "RG_NAME=$RG_NAME"
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP"
           
   build-and-deploy:
     name: Build & Deploy App
@@ -81,7 +81,7 @@ jobs:
     env:
       ACR_LOGIN_SERVER: ${{ needs.terraform.outputs.acr_login_server }}
       AKS_NAME: ${{ needs.terraform.outputs.aks_name }}
-      RG_NAME: ${{ needs.terraform.outputs.resource_group }}
+      RESOURCE_GROUP: ${{ needs.terraform.outputs.resource_group }}
     defaults:
       run:
         working-directory: app
@@ -108,13 +108,13 @@ jobs:
           set -e
           echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
           echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
-          echo "rg_name=$(terraform output -raw resource_group)" >> $GITHUB_OUTPUT
+          echo "resource_group=$(terraform output -raw resource_group)" >> $GITHUB_OUTPUT
 
       
       - name: Get AKS Credentials
         run: |
           az aks get-credentials \
-            --resource-group $RG_NAME \
+            --resource-group $RESOURCE_GROUP \
             --name $AKS_NAME \
             --overwrite-existing
       
