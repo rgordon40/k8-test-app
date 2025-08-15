@@ -51,9 +51,28 @@ jobs:
       - name: Get Terraform Output
         id: get-output
         run: |
-           echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
-           echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
-           echo "rg_name=$(terraform output -raw rg_name)" >> $GITHUB_OUTPUT
+          set -e  # fail immediately if a command fails
+          
+          echo "Fetching Terraform outputs..."
+          terraform output
+
+          ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
+          AKS_NAME=$(terraform output -raw aks_name)
+          RG_NAME=$(terraform output -raw rg_name)
+
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$AKS_NAME" ] || [ -z "$RG_NAME" ]; then
+            echo "ERROR: One or more Terraform outputs are empty."
+            exit 1
+          fi
+
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+          echo "aks_name=$AKS_NAME" >> $GITHUB_OUTPUT
+          echo "rg_name=$RG_NAME" >> $GITHUB_OUTPUT
+
+          echo "✅ Terraform outputs:"
+          echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
+          echo "AKS_NAME=$AKS_NAME"
+          echo "RG_NAME=$RG_NAME"
           
   build-and-deploy:
     name: Build & Deploy App
@@ -85,9 +104,10 @@ jobs:
       
       - name: Get AKS Credentials
         run: |
+          echo "Getting AKS credentials for cluster: $AKS_NAME in resource group: $RG_NAME"
           az aks get-credentials \
-            --resource-group $RG_NAME \
-            --name $AKS_NAME \
+            --resource-group "$RG_NAME" \
+            --name "$AKS_NAME" \
             --overwrite-existing
       
       - name: Helm Upgrade/Install

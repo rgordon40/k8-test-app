@@ -1,9 +1,9 @@
 output "resource_group" {
-  value = azurerm_resource_group.rg.name
+  value = azurerm_resource_group.main.rg.name
 }
 
 output "aks_name" {
-  value = azurerm_kubernetes_cluster.aks.name
+  value = azurerm_kubernetes_cluster.main.aks.name
 }
 
 output "kube_admin_config_raw" {
@@ -13,5 +13,5 @@ output "kube_admin_config_raw" {
 }
 
 output "acr_login_server" {
-  value = azurerm_container_registry.acr.login_server
+  value = azurerm_container_registry.acr.main.login_server
 }
