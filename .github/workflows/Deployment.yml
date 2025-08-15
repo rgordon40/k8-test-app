@@ -102,14 +102,38 @@ jobs:
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
       
-      - name: Get Terraform Output
+      - name: Get Terraform Output (Fail if Missing)
         id: get-output
         run: |
-          set -e
-          echo "acr_login_server=$(terraform output -raw acr_login_server)" >> $GITHUB_OUTPUT
-          echo "aks_name=$(terraform output -raw aks_name)" >> $GITHUB_OUTPUT
-          echo "resource_group=$(terraform output -raw resource_group)" >> $GITHUB_OUTPUT
+          set -e  # fail immediately if a command fails
+          
+          echo "Fetching Terraform outputs..."
+          terraform output
 
+          # Fetch outputs
+          ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server || echo "")
+          AKS_NAME=$(terraform output -raw aks_name || echo "")
+          RESOURCE_GROUP=$(terraform output -raw resource_group || echo "")
+
+          # Fail early if any are missing
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$AKS_NAME" ] || [ -z "$RESOURCE_GROUP" ]; then
+            echo "❌ ERROR: One or more required Terraform outputs are missing or empty."
+            echo "ACR_LOGIN_SERVER='$ACR_LOGIN_SERVER'"
+            echo "AKS_NAME='$AKS_NAME'"
+            echo "RESOURCE_GROUP='$RESOURCE_GROUP'"
+            exit 1
+          fi
+
+          # Pass outputs to next job
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+          echo "aks_name=$AKS_NAME" >> $GITHUB_OUTPUT
+          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+
+          # Debug
+          echo "✅ Terraform outputs:"
+          echo "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
+          echo "AKS_NAME=$AKS_NAME"
+          echo "RESOURCE_GROUP=$RESOURCE_GROUP"
       
       - name: Get AKS Credentials
         run: |
@@ -118,6 +142,11 @@ jobs:
             --name $AKS_NAME \
             --overwrite-existing
       
+      - name: Build Helm dependencies
+        run: |
+          cd ../helm
+          helm dependency build
+
       - name: Helm Upgrade/Install
         run: |
           helm upgrade --install myapp ../helm \
