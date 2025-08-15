@@ -95,15 +95,15 @@ jobs:
         run: |
           aks_value=$(terraform output -raw aks_name)
           echo "AKS_NAME=${aks_name}" >> $GITHUB_OUTPUT
-          echo "AKS_NAME``=${aks_name}" >> $GITHUB_ENV
+          echo "AKS_NAME=${aks_name}" >> $GITHUB_ENV
           rg_value=$(terraform output -raw rg_name)
           echo "RG_NAME=${rg_name}" >> $GITHUB_OUTPUT
-          echo "RG_NAME``=${rg_name}" >> $GITHUB_ENV
+          echo "RG_NAME=${rg_name}" >> $GITHUB_ENV
       
       - name: Set AKS env variables
         run: |
-          echo "AKS_NAME=${{ needs.terraform.outputs.aks_name }}" >> $GITHUB_ENV
-          echo "RG_NAME=${{ needs.terraform.outputs.rg_name }}" >> $GITHUB_ENV
+          echo "AKS_NAME=${aks_name}" >> $GITHUB_ENV
+          echo "RG_NAME=${rg_name}" >> $GITHUB_ENV
       
       - name: Get AKS Credentials
         run: |
