@@ -9,6 +9,6 @@ This repository contains a simple "Hello, World!" Go app packaged by Helm and de
 az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes /subscriptions/{{subscriptionID}} --sdk-auth
 2. Push this repository to your GitHub account.
 3. Open the Actions tab in GitHub, run the workflow on the `main` branch.
-4. The workflow will provision resources, push the image, and deploy the Helm chart, and port-forward the service for 10 min.
+4. The workflow will provision resources, push the image, and deploy the Helm chart.
 ```
 To test you can visit the URL provided in the "Wait for LoadBalancer external IP" step of the Work Flow
