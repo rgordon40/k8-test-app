@@ -123,3 +123,19 @@ jobs:
           helm upgrade --install myapp ../helm \
             --set image.repository=${ACR_LOGIN_SERVER}/myapp \
             --set image.tag=${GITHUB_SHA}
+
+      - name: Port-forward service (10 min max)
+        run: |
+          az aks get-credentials \
+            --resource-group $RESOURCE_GROUP \
+            --name $AKS_NAME \
+            --overwrite-existing
+          
+          echo "Starting port-forward for 10 minutes..."
+          timeout 600 kubectl port-forward svc/myapp-hello-helm 8080:80
+
+
+      - name: Test service
+        run: |
+          sleep 5
+          curl http://localhost:8080

@@ -9,10 +9,6 @@ This repository contains a simple "Hello, World!" Go app packaged by Helm and de
 az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes /subscriptions/{{subscriptionID}} --sdk-auth
 2. Push this repository to your GitHub account.
 3. Open the Actions tab in GitHub, run the workflow on the `main` branch.
-4. The workflow will provision resources, push the image, and deploy the Helm chart.
-
-Port-forward to access the app
-`az aks get-credentials --resource-group test-rg --name test-aks --overwrite-existing \
- && kubectl port-forward svc/myapp-hello-helm 8080:80`
+4. The workflow will provision resources, push the image, and deploy the Helm chart, and port-forward the service for 10 min.
 ```
-Then visit http://localhost:8080
+To test visit http://localhost:8080 within the 10 min timeout period
