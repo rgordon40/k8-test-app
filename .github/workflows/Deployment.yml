@@ -127,7 +127,7 @@ jobs:
       - name: Wait for pods to be ready
         run: |
           echo "Waiting for app pods to be ready..."
-          kubectl rollout status deployment/myapp --timeout=300s
+          kubectl rollout status deployment/myapp-hello-helm --timeout=300s
 
       
       - name: Port-forward service (10 min max)
