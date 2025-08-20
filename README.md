@@ -7,6 +7,7 @@ This repository contains a simple "Hello, World!" Go app packaged by Helm and de
 1. Create an Azure service principal and save the JSON credentials as the `AZURE_CREDENTIALS` secret in your GitHub repository.
 ```
 az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes /subscriptions/{{subscriptionID}} --sdk-auth
+```
 2. Push this repository to your GitHub account.
 3. Open the Actions tab in GitHub, run the workflow on the `main` branch.
 4. The workflow will provision resources, push the image, and deploy the Helm chart.
