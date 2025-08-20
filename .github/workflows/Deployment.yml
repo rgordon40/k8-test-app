@@ -124,24 +124,21 @@ jobs:
             --set image.repository=${ACR_LOGIN_SERVER}/myapp \
             --set image.tag=${GITHUB_SHA}
 
-      - name: Wait for pods to be ready
+      - name: Wait for LoadBalancer external IP
         run: |
-          echo "Waiting for app pods to be ready..."
-          kubectl rollout status deployment/myapp-hello-helm --timeout=300s
+          echo "Waiting for external IP..."
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get svc myapp-hello-helm -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "Service is available at: http://$EXTERNAL_IP"
+              echo "EXTERNAL_IP=$EXTERNAL_IP" >> $GITHUB_ENV
+              break
+            fi
+            echo "Still waiting... ($i/30)"
+            sleep 10
+          done
 
-      
-      - name: Port-forward service (10 min max)
-        run: |
-          az aks get-credentials \
-            --resource-group $RESOURCE_GROUP \
-            --name $AKS_NAME \
-            --overwrite-existing
-          
-          echo "Starting port-forward for 10 minutes..."
-          timeout 600 kubectl port-forward svc/myapp-hello-helm 8080:80
-
-
-      - name: Test service
-        run: |
-          sleep 5
-          curl http://localhost:8080
+          if [ -z "$EXTERNAL_IP" ]; then
+            echo "ERROR: Timed out waiting for external IP"
+            exit 1
+          fi
