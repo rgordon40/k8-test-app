@@ -124,6 +124,12 @@ jobs:
             --set image.repository=${ACR_LOGIN_SERVER}/myapp \
             --set image.tag=${GITHUB_SHA}
 
+      - name: Wait for pods to be ready
+        run: |
+          echo "Waiting for app pods to be ready..."
+          kubectl rollout status deployment/myapp --timeout=300s
+
+      
       - name: Port-forward service (10 min max)
         run: |
           az aks get-credentials \
