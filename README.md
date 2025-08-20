@@ -11,8 +11,8 @@ az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes 
 3. Open the Actions tab in GitHub, run the workflow on the `main` branch.
 4. The workflow will provision resources, push the image, and deploy the Helm chart.
 
-Port-forward to access the app:
-```
-kubectl port-forward svc/myapp-hello-helm 8080:80
+Port-forward to access the app
+`az aks get-credentials --resource-group test-rg --name test-aks --overwrite-existing \
+ && kubectl port-forward svc/myapp-hello-helm 8080:80`
 ```
 Then visit http://localhost:8080
