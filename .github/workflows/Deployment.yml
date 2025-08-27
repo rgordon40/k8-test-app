@@ -143,6 +143,14 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.0
+
+      - name: Terraform Init
+        run: terraform init
+      
       # Wait 2 hours before cleanup
       - name: Wait before destroy
         run: sleep 1200   # 7200 seconds = 2 hours
