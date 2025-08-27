@@ -142,3 +142,10 @@ jobs:
             echo "ERROR: Timed out waiting for external IP"
             exit 1
           fi
+
+      # Wait 2 hours before cleanup
+      - name: Wait before destroy
+        run: sleep 1200   # 7200 seconds = 2 hours
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
