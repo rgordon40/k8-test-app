@@ -12,4 +12,4 @@ az ad sp create-for-rbac --name "github-actions-sp" --role contributor --scopes 
 3. Open the Actions tab in GitHub, run the workflow on the `main` branch.
 4. The workflow will provision resources, push the image, and deploy the Helm chart.
 ```
-To test you can visit the URL provided in the "Wait for LoadBalancer external IP" step of the Work Flow
+To test you can click or visit the URL provided in the "Wait for LoadBalancer external IP" step of the Work Flow
