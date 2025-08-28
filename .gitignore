@@ -38,9 +38,7 @@ override.tf.json
 # terraform.rc
 
 *.terraform/
-
 *.infracost/
-
 .DS_Store
 
 # kubeconfig
