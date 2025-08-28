@@ -50,3 +50,4 @@ app/hello-app
 # Docker
 **/node_modules
 
+.DS_Store
