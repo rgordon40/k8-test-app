@@ -39,7 +39,6 @@ override.tf.json
 
 *.terraform/
 *.infracost/
-.DS_Store
 
 # kubeconfig
 .kube
