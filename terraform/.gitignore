@@ -42,5 +42,13 @@ override.tf.json
 *.infracost/
 
 .DS_Store
-horizon-deploy-local
-node_modules/
+
+# kubeconfig
+.kube
+
+# Go build
+app/hello-app
+
+# Docker
+**/node_modules
+
