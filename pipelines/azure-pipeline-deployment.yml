@@ -1,0 +1,128 @@
+# Azure DevOps Deployment Pipeline
+# Fully aligned with your Terraform variables + main.tf naming
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  prefix: 'test'                           # same as terraform variable
+  namespace: '$(prefix)-app'               # derived namespace
+  imageRepository: '$(prefix)-app'         # can match your chart
+  tag: '$(Build.BuildId)'                  # image version
+
+stages:
+# -------------------------------------------------------------------
+# 1. GET TERRAFORM OUTPUTS
+# -------------------------------------------------------------------
+- stage: GetOutputs
+  displayName: "Get Terraform Outputs"
+  jobs:
+    - job: tfoutputs
+      steps:
+        - checkout: self
+
+        # Download artifact containing Terraform state if needed
+        # OR simply run 'terraform output' directly when using remote backend
+
+        - task: TerraformInstaller@1
+          inputs:
+            terraformVersion: 'latest'
+
+        - task: TerraformTaskV4@4
+          name: tfOutput
+          displayName: "Terraform Output"
+          inputs:
+            provider: azurerm
+            command: output
+            workingDirectory: 'terraform'
+            environmentServiceNameAzureRM: 'azure-subscription-sc'
+            outputToJSON: true
+
+        - task: PowerShell@2
+          name: ExtractVars
+          displayName: "Extract ACR & AKS Output Variables"
+          inputs:
+            targetType: 'inline'
+            script: |
+              $json = Get-Content "$(tfOutput.jsonOutputFile)" | ConvertFrom-Json
+              Write-Host "##vso[task.setvariable variable=acrName]$($json.acr_name.value)"
+              Write-Host "##vso[task.setvariable variable=acrLoginServer]$($json.acr_login_server.value)"
+              Write-Host "##vso[task.setvariable variable=aksClusterName]$($json.aks_name.value)"
+              Write-Host "##vso[task.setvariable variable=aksResourceGroup]$($json.aks_resource_group.value)"
+
+# -------------------------------------------------------------------
+# 2. BUILD AND PUSH IMAGE TO ACR
+# -------------------------------------------------------------------
+- stage: BuildPush
+  displayName: "Build & Push Docker Image"
+  dependsOn: GetOutputs
+  jobs:
+    - job: BuildImage
+      steps:
+        - checkout: self
+
+        - task: AzureCLI@2
+          displayName: "ACR Login"
+          inputs:
+            azureSubscription: 'azure-subscription-sc'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              az acr login --name $(acrName)
+
+        - script: |
+            docker build \
+              -t $(acrLoginServer)/$(imageRepository):$(tag) \
+              ./app
+
+            docker push $(acrLoginServer)/$(imageRepository):$(tag)
+          displayName: "Docker Build & Push"
+
+        - publish: $(Build.SourcesDirectory)/helm
+          artifact: helm-chart
+
+# -------------------------------------------------------------------
+# 3. DEPLOY HELM CHART TO AKS
+# -------------------------------------------------------------------
+- stage: DeployAKS
+  displayName: "Deploy Helm Release to AKS"
+  dependsOn: BuildPush
+  jobs:
+    - deployment: DeployApp
+      environment: "dev"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+              - download: current
+                artifact: helm-chart
+
+              - task: AzureCLI@2
+                displayName: "Get AKS Credentials"
+                inputs:
+                  azureSubscription: 'azure-subscription-sc'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  inlineScript: |
+                    az aks get-credentials \
+                      --resource-group $(aksResourceGroup) \
+                      --name $(aksClusterName) \
+                      --overwrite-existing
+
+              - script: |
+                  kubectl create namespace $(namespace) \
+                    --dry-run=client -o yaml | kubectl apply -f -
+                displayName: "Ensure Namespace Exists"
+
+              - script: |
+                  helm upgrade --install $(prefix)-app $(Pipeline.Workspace)/helm-chart \
+                    --namespace $(namespace) \
+                    --set image.repository=$(acrLoginServer)/$(imageRepository) \
+                    --set image.tag=$(tag)
+                displayName: "Helm Upgrade"

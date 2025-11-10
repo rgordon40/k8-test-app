@@ -31,9 +31,16 @@ resource "azurerm_kubernetes_cluster" "aks" {
     type = "SystemAssigned"
   }
 
+  azure_active_directory_role_based_access_control {
+    azure_rbac_enabled = true
+    tenant_id          = data.azurerm_subscription.current.tenant_id
+  }
+
   network_profile {
     network_plugin = "azure"
+    network_policy = "azure"
   }
+
 }
 
 resource "azurerm_role_assignment" "acr_pull" {

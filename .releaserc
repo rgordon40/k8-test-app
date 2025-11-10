@@ -1,0 +1,14 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/github",
+      {
+        "successComment": "### Download Artifacts\n- [DHE Prod Bundle](https://s3.eu-west-1.amazonaws.com/horizon-terraform-states/bundles/dhe-horizon-bundle-prod.zip)"
+      }
+    ]
+  ]
+}
